@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>KosAir Smart</title>
+  <style>
+    body {
+      font-family: 'Segoe UI';
+      background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+      text-align: center;
+      color: white;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      margin: 100px auto;
+      width: 320px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .humidity {
+      font-size: 50px;
+      font-weight: bold;
+    }
+
+    .status {
+      font-size: 22px;
+      margin-top: 10px;
+    }
+
+    .rekom {
+      margin-top: 15px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1>KosAir</h1>
+  <div class="humidity" id="humidity">--%</div>
+  <div class="status" id="status">Loading...</div>
+  <div class="rekom" id="rekom"></div>
+</div>
+
+<script>
+  // SIMULASI DATA (nanti bisa diganti dari ThingSpeak)
+  let humidity = 75;
+
+  document.getElementById("humidity").innerText = humidity + "%";
+
+  let status = "";
+  let rekom = "";
+
+  if (humidity < 60) {
+    status = "AMAN 🟢";
+    rekom = "Kondisi ruangan baik dan nyaman.";
+  }
+  else if (humidity <= 70) {
+    status = "WASPADA 🟡";
+    rekom = "Udara mulai lembap. Buka ventilasi.";
+  }
+  else {
+    status = "RISIKO 🔴";
+    rekom = "Risiko jamur tinggi! Gunakan kipas atau jemur kasur.";
+  }
+
+  document.getElementById("status").innerText = status;
+  document.getElementById("rekom").innerText = rekom;
+</script>
+
+</body>
+</html>
