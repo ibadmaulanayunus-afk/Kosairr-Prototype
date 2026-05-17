@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KosAir Pro - Monitoring Kelembapan & Ventilasi Otomatis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --blue-50: #eff6ff;
+            --blue-100: #dbeafe;
+            --blue-200: #bfdbfe;
+            --blue-300: #93c5fd;
+            --blue-400: #60a5fa;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --cyan-100: #cffafe;
+            --cyan-200: #a5f3fc;
+            --teal-100: #ccfbf1;
+            --white: #ffffff;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --green: #10b981;
+            --yellow: #f59e0b;
+            --red: #ef4444;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--blue-50) 0%, var(--cyan-100) 50%, var(--blue-100) 100%);
+            min-height: 100vh;
+            color: var(--gray-900);
+            position: relative;
+            overflow-x: hidden;
+            padding-bottom: 100px;
+        }
+
+        /* Animated Background Blobs */
+        .bg-blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            z-index: 0;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .blob-1 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, var(--blue-300), var(--cyan-200));
+            top: -100px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+
+        .blob-2 {
+            width: 350px;
+            height: 350px;
+            background: linear-gradient(135deg, var(--blue-400), var(--teal-100));
+            bottom: -100px;
+            left: -100px;
+            animation-delay: 5s;
+        }
+
+        .blob-3 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, var(--cyan-200), var(--blue-200));
+            top: 50%;
+            left: 50%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(50px, -50px) scale(1.1); }
+            66% { transform: translate(-50px, 50px) scale(0.9); }
+        }
+
+        /* Container */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 32px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-600));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .hero h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--blue-600);
+            margin-bottom: 8px;
+        }
+
+        .hero p {
+            font-size: 14px;
+            color: var(--gray-700);
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected { background: var(--green); }
+        .status-disconnected { background: var(--red); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Page Content */
+        .page {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Card */
+        .card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-600));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .card-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--blue-600);
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: var(--gray-700);
+            opacity: 0.7;
+        }
+
+        /* Humidity Gauge */
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 24px 0;
+        }
+
+        .gauge {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+
+        .gauge-circle {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: var(--gray-200);
+            stroke-width: 20;
+        }
+
+        .gauge-progress {
+            fill: none;
+            stroke-width: 20;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease, stroke 0.5s ease;
+        }
+
+        .gauge-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .gauge-value {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .gauge-label {
+            font-size: 14px;
+            color: var(--gray-700);
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 20px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--gray-700);
+            opacity: 0.7;
+        }
+
+        /* Recommendation Card */
+        .recommendation {
+            background: linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(219, 234, 254, 0.9));
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--blue-200);
+        }
+
+        .recommendation-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recommendation-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--blue-600);
+        }
+
+        .recommendation-text {
+            font-size: 13px;
+            color: var(--gray-700);
+            line-height: 1.6;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+
+        /* Info Cards Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+        }
+
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .info-card-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--blue-300), var(--blue-500));
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+        }
+
+        .info-card-icon svg {
+            width: 28px;
+            height: 28px;
+            stroke: white;
+        }
+
+        .info-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--blue-600);
+        }
+
+        .info-card-text {
+            font-size: 13px;
+            color: var(--gray-700);
+            line-height: 1.7;
+        }
+
+        /* Flow Steps */
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .flow-step {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            position: relative;
+        }
+
+        .flow-step::after {
+            content: '↓';
+            position: absolute;
+            bottom: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            color: var(--blue-400);
+        }
+
+        .flow-step:last-child::after {
+            display: none;
+        }
+
+        .flow-step-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .flow-number {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-600));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .flow-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--blue-600);
+        }
+
+        .flow-description {
+            font-size: 13px;
+            color: var(--gray-700);
+            line-height: 1.6;
+            margin-left: 44px;
+        }
+
+        /* Connect Button */
+        .connect-button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+            margin-bottom: 16px;
+        }
+
+        .connect-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .connect-button:active {
+            transform: translateY(0);
+        }
+
+        .connect-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Data Row */
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-size: 13px;
+            color: var(--gray-700);
+            opacity: 0.7;
+        }
+
+        .data-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--blue-600);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 12px 16px;
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            display: flex;
+            gap: 8px;
+            max-width: 90%;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 12px;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 60px;
+            background: transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--blue-400), var(--blue-600));
+        }
+
+        .nav-item.active .nav-icon svg {
+            stroke: white;
+        }
+
+        .nav-item.active .nav-label {
+            color: white;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 4px;
+        }
+
+        .nav-icon svg {
+            width: 100%;
+            height: 100%;
+            stroke: var(--blue-600);
+            transition: stroke 0.3s ease;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--blue-600);
+            transition: color 0.3s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container {
+                padding: 16px;
+            }
+
+            .hero h1 {
+                font-size: 24px;
+            }
+
+            .gauge {
+                width: 180px;
+                height: 180px;
+            }
+
+            .gauge-value {
+                font-size: 40px;
+            }
+
+            .nav-label {
+                font-size: 10px;
+            }
+        }
+
+        @media (min-width: 481px) {
+            .bottom-nav {
+                max-width: 480px;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Blobs -->
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+    <div class="bg-blob blob-3"></div>
+
+    <!-- Container -->
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <div class="hero-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M12 2v20M2 12h20"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            </div>
+            <h1>KosAir Pro</h1>
+            <p>Sistem monitoring kelembapan dan ventilasi otomatis berbasis IoT untuk kesehatan lingkungan kamar kos Anda</p>
+            <div class="status-badge">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Memuat...</span>
+            </div>
+        </div>
+
+        <!-- Dashboard Page -->
+        <div class="page active" id="dashboardPage">
+            <button class="connect-button" id="connectBtn">
+                <span id="connectBtnText">Connect Device</span>
+            </button>
+
+            <!-- Humidity Gauge Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Kelembapan Ruangan</div>
+                        <div class="card-subtitle">Real-time monitoring</div>
+                    </div>
+                </div>
+                <div class="gauge-container">
+                    <div class="gauge">
+                        <svg class="gauge-circle" viewBox="0 0 200 200">
+                            <circle class="gauge-bg" cx="100" cy="100" r="85"/>
+                            <circle class="gauge-progress" id="gaugeProgress" cx="100" cy="100" r="85"
+                                stroke-dasharray="534.07" stroke-dashoffset="534.07"/>
+                        </svg>
+                        <div class="gauge-center">
+                            <div class="gauge-value" id="humidityValue">--</div>
+                            <div class="gauge-label">Kelembapan</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="tempValue">--°C</div>
+                    <div class="stat-label">Suhu Ruangan</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="fanStatus">--</div>
+                    <div class="stat-label">Status Kipas</div>
+                </div>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="recommendation" id="recommendation">
+                <div class="recommendation-header">
+                    <div class="recommendation-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M2 12h20"/>
+                        </svg>
+                    </div>
+                    <div class="recommendation-title">Rekomendasi Kesehatan</div>
+                </div>
+                <p class="recommendation-text" id="recommendationText">
+                    Memuat rekomendasi...
+                </p>
+            </div>
+
+            <!-- Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Grafik Kelembapan</div>
+                        <div class="card-subtitle">Real-time data</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="humidityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monitoring Page -->
+        <div class="page" id="monitoringPage">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Status Koneksi</div>
+                        <div class="card-subtitle">ESP8266 Device</div>
+                    </div>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Status</span>
+                    <span class="data-value" id="deviceStatus">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">IP Address</span>
+                    <span class="data-value">192.168.1.100</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Update Terakhir</span>
+                    <span class="data-value" id="lastUpdate">--</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <path d="M12 20v-6M6 20V10M18 20V4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Data Sensor Real-time</div>
+                        <div class="card-subtitle">DHT11 Sensor</div>
+                    </div>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Kelembapan</span>
+                    <span class="data-value" id="monitorHumidity">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Suhu</span>
+                    <span class="data-value" id="monitorTemp">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Status Kipas</span>
+                    <span class="data-value" id="monitorFan">--</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Riwayat Data</div>
+                        <div class="card-subtitle">5 Data terakhir</div>
+                    </div>
+                </div>
+                <div id="historyList">
+                    <p class="data-label" style="text-align: center; padding: 20px;">Belum ada data</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Education Page -->
+        <div class="page" id="edukasiPage">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <div class="info-card-title">Dampak Kelembapan Tinggi</div>
+                    </div>
+                    <p class="info-card-text">
+                        Kelembapan tinggi (>70%) menciptakan lingkungan ideal bagi pertumbuhan jamur, bakteri, dan tungau debu. Hal ini dapat memicu berbagai masalah kesehatan dan kerusakan material di ruangan.
+                    </p>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <circle cx="12" cy="12" r="1"/>
+                                <circle cx="12" cy="12" r="5"/>
+                                <circle cx="12" cy="12" r="9"/>
+                            </svg>
+                        </div>
+                        <div class="info-card-title">Risiko Jamur & Bakteri</div>
+                    </div>
+                    <p class="info-card-text">
+                        Jamur menghasilkan spora yang dapat terhirup dan menyebabkan reaksi alergi, asma, dan masalah pernapasan lainnya. Bakteri berkembang biak lebih cepat di lingkungan lembap.
+                    </p>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            </svg>
+                        </div>
+                        <div class="info-card-title">ISPA & Alergi</div>
+                    </div>
+                    <p class="info-card-text">
+                        Infeksi Saluran Pernapasan Akut (ISPA) sering dipicu oleh kualitas udara buruk. Kelembapan tinggi memperparah gejala alergi seperti bersin, hidung tersumbat, dan batuk.
+                    </p>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                        </div>
+                        <div class="info-card-title">Standar WHO</div>
+                    </div>
+                    <p class="info-card-text">
+                        World Health Organization (WHO) merekomendasikan kelembapan ideal 40-60% untuk mencegah pertumbuhan mikroorganisme dan menjaga kenyamanan serta kesehatan pernapasan.
+                    </p>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-card-header">
+                        <div class="info-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                        </div>
+                        <div class="info-card-title">Pencegahan</div>
+                    </div>
+                    <p class="info-card-text">
+                        Gunakan ventilasi otomatis, buka jendela secara berkala, gunakan dehumidifier atau AC, dan pastikan sirkulasi udara baik. KosAir Pro membantu monitoring dan kontrol otomatis.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works Page -->
+        <div class="page" id="caraKerjaPage">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6"/>
+                            <path d="m4.22 4.22 4.243 4.242m5.07 5.071 4.242 4.242"/>
+                            <path d="M1 12h6m6 0h6"/>
+                            <path d="m4.22 19.78 4.243-4.242m5.07-5.071 4.242-4.242"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Alur Sistem</div>
+                        <div class="card-subtitle">KosAir Pro Workflow</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="flow-step-header">
+                        <div class="flow-number">1</div>
+                        <div class="flow-title">Sensor DHT11</div>
+                    </div>
+                    <p class="flow-description">
+                        Sensor DHT11 membaca kelembapan dan suhu ruangan secara real-time setiap 2 detik dengan akurasi tinggi.
+                    </p>
+                </div>
+
+                <div class="flow-step">
+                    <div class="flow-step-header">
+                        <div class="flow-number">2</div>
+                        <div class="flow-title">ESP8266 Processing</div>
+                    </div>
+                    <p class="flow-description">
+                        Mikrokontroler ESP8266 memproses data sensor dan mengirimkan ke server melalui WiFi dengan protokol HTTP.
+                    </p>
+                </div>
+
+                <div class="flow-step">
+                    <div class="flow-step-header">
+                        <div class="flow-number">3</div>
+                        <div class="flow-title">Kontrol Relay</div>
+                    </div>
+                    <p class="flow-description">
+                        Sistem mengaktifkan relay untuk menyalakan kipas otomatis ketika kelembapan melebihi 70% (threshold).
+                    </p>
+                </div>
+
+                <div class="flow-step">
+                    <div class="flow-step-header">
+                        <div class="flow-number">4</div>
+                        <div class="flow-title">Kipas Ventilasi</div>
+                    </div>
+                    <p class="flow-description">
+                        Kipas bekerja untuk menurunkan kelembapan hingga mencapai kondisi ideal (40-60%) untuk kesehatan.
+                    </p>
+                </div>
+
+                <div class="flow-step">
+                    <div class="flow-step-header">
+                        <div class="flow-number">5</div>
+                        <div class="flow-title">Dashboard Website</div>
+                    </div>
+                    <p class="flow-description">
+                        Data ditampilkan real-time di dashboard dengan visualisasi grafik, gauge, dan rekomendasi kesehatan.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Page -->
+        <div class="page" id="tentangPage">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Tentang KosAir Pro</div>
+                        <div class="card-subtitle">IoT Health-Tech Solution</div>
+                    </div>
+                </div>
+                <p class="info-card-text" style="line-height: 1.8;">
+                    Sistem monitoring kelembapan dan ventilasi otomatis berbasis IoT untuk mendukung kesehatan lingkungan kamar kos. KosAir Pro hadir sebagai solusi modern untuk mencegah masalah kesehatan akibat kelembapan tinggi.
+                </p>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card-header">
+                    <div class="info-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                    </div>
+                    <div class="info-card-title">Tujuan Produk</div>
+                </div>
+                <p class="info-card-text">
+                    Menciptakan lingkungan kamar kos yang sehat dengan monitoring kelembapan otomatis, mencegah pertumbuhan jamur dan bakteri, serta mengurangi risiko ISPA dan alergi bagi penghuni.
+                </p>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card-header">
+                    <div class="info-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                            <polyline points="2 17 12 22 22 17"/>
+                            <polyline points="2 12 12 17 22 12"/>
+                        </svg>
+                    </div>
+                    <div class="info-card-title">Keunggulan</div>
+                </div>
+                <p class="info-card-text">
+                    ✓ Monitoring real-time 24/7<br>
+                    ✓ Kontrol ventilasi otomatis<br>
+                    ✓ Dashboard modern & responsif<br>
+                    ✓ Notifikasi & rekomendasi kesehatan<br>
+                    ✓ Hemat energi dengan automation<br>
+                    ✓ Data historis & analitik
+                </p>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card-header">
+                    <div class="info-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                    <div class="info-card-title">Teknologi</div>
+                </div>
+                <p class="info-card-text">
+                    <strong>Hardware:</strong> ESP8266, DHT11, Relay Module<br>
+                    <strong>Software:</strong> React, Chart.js, WiFi HTTP Protocol<br>
+                    <strong>Design:</strong> Glassmorphism, Y2K Aesthetic, Mobile-First<br>
+                    <strong>Cloud:</strong> Real-time data streaming
+                </p>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card-header">
+                    <div class="info-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <div class="info-card-title">Tim Pengembang</div>
+                </div>
+                <p class="info-card-text">
+                    KosAir Pro dikembangkan oleh tim mahasiswa yang peduli kesehatan lingkungan. Proyek ini merupakan inovasi IoT untuk meningkatkan kualitas hidup penghuni kos melalui teknologi modern.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-page="dashboardPage">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+            </div>
+            <div class="nav-label">Dashboard</div>
+        </div>
+        <div class="nav-item" data-page="monitoringPage">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+            </div>
+            <div class="nav-label">Monitoring</div>
+        </div>
+        <div class="nav-item" data-page="edukasiPage">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+            </div>
+            <div class="nav-label">Edukasi</div>
+        </div>
+        <div class="nav-item" data-page="caraKerjaPage">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+            </div>
+            <div class="nav-label">Cara Kerja</div>
+        </div>
+        <div class="nav-item" data-page="tentangPage">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+            </div>
+            <div class="nav-label">Tentang</div>
+        </div>
+    </nav>
+
+    <script>
+        // Global variables
+        let isConnected = false;
+        let autoRefreshInterval = null;
+        let humidityChart = null;
+        let chartData = {
+            labels: [],
+            data: []
+        };
+        let historyData = [];
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('humidityChart').getContext('2d');
+            humidityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Kelembapan (%)',
+                        data: chartData.data,
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#60a5fa',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(59, 130, 246, 0.1)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update chart data
+        function updateChart(humidity) {
+            const now = new Date();
+            const timeLabel = now.getHours().toString().padStart(2, '0') + ':' + 
+                             now.getMinutes().toString().padStart(2, '0') + ':' +
+                             now.getSeconds().toString().padStart(2, '0');
+            
+            chartData.labels.push(timeLabel);
+            chartData.data.push(humidity);
+            
+            // Keep only last 15 data points
+            if (chartData.labels.length > 15) {
+                chartData.labels.shift();
+                chartData.data.shift();
+            }
+            
+            humidityChart.update();
+        }
+
+        // Update gauge
+        function updateGauge(humidity) {
+            const gaugeProgress = document.getElementById('gaugeProgress');
+            const humidityValue = document.getElementById('humidityValue');
+            
+            const circumference = 534.07;
+            const offset = circumference - (humidity / 100) * circumference;
+            
+            gaugeProgress.style.strokeDashoffset = offset;
+            humidityValue.textContent = humidity + '%';
+            
+            // Color based on humidity level
+            let color;
+            if (humidity < 60) {
+                color = '#10b981'; // Green
+            } else if (humidity >= 60 && humidity <= 70) {
+                color = '#f59e0b'; // Yellow
+            } else {
+                color = '#ef4444'; // Red
+            }
+            
+            gaugeProgress.style.stroke = color;
+            humidityValue.style.color = color;
+        }
+
+        // Update recommendation
+        function updateRecommendation(humidity) {
+            const recommendationText = document.getElementById('recommendationText');
+            
+            if (humidity < 40) {
+                recommendationText.innerHTML = '✓ Kelembapan terlalu rendah. Gunakan humidifier atau letakkan wadah air di ruangan untuk meningkatkan kelembapan.';
+            } else if (humidity >= 40 && humidity < 60) {
+                recommendationText.innerHTML = '✓ Kelembapan dalam kondisi IDEAL! Lingkungan ruangan sehat dan nyaman untuk pernapasan.';
+            } else if (humidity >= 60 && humidity <= 70) {
+                recommendationText.innerHTML = '⚠ Kelembapan mulai tinggi. Buka jendela dan aktifkan ventilasi untuk mencegah pertumbuhan jamur.';
+            } else {
+                recommendationText.innerHTML = '⚠ PERINGATAN! Kelembapan sangat tinggi. Risiko jamur dan ISPA meningkat. Kipas otomatis aktif.';
+            }
+        }
+
+        // Fetch data from ESP8266
+        async function fetchData() {
+            try {
+                const response = await fetch('http://192.168.1.100/data', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                const data = await response.json();
+                
+                // Update UI
+                updateGauge(data.humidity);
+                updateChart(data.humidity);
+                updateRecommendation(data.humidity);
+                
+                document.getElementById('tempValue').textContent = data.temp + '°C';
+                document.getElementById('fanStatus').textContent = data.humidity > 70 ? 'ON' : 'OFF';
+                
+                // Monitoring page
+                document.getElementById('monitorHumidity').textContent = data.humidity + '%';
+                document.getElementById('monitorTemp').textContent = data.temp + '°C';
+                document.getElementById('monitorFan').textContent = data.humidity > 70 ? 'ON' : 'OFF';
+                document.getElementById('deviceStatus').textContent = 'Connected';
+                
+                // Update last update time
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('id-ID');
+                document.getElementById('lastUpdate').textContent = timeStr;
+                
+                // Add to history
+                addToHistory(data.humidity, data.temp);
+                
+                // Update connection status
+                updateConnectionStatus(true);
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Add to history
+        function addToHistory(humidity, temp) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID');
+            
+            historyData.unshift({
+                time: timeStr,
+                humidity: humidity,
+                temp: temp
+            });
+            
+            // Keep only last 5 records
+            if (historyData.length > 5) {
+                historyData.pop();
+            }
+            
+            // Update history display
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = historyData.map(item => `
+                <div class="data-row">
+                    <span class="data-label">${item.time}</span>
+                    <span class="data-value">${item.humidity}% | ${item.temp}°C</span>
+                </div>
+            `).join('');
+        }
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (connected) {
+                statusDot.className = 'status-dot status-connected';
+                statusText.textContent = 'Connected';
+            } else {
+                statusDot.className = 'status-dot status-disconnected';
+                statusText.textContent = 'Disconnected';
+            }
+        }
+
+        // Connect button handler
+        document.getElementById('connectBtn').addEventListener('click', async function() {
+            const btn = this;
+            const btnText = document.getElementById('connectBtnText');
+            
+            if (!isConnected) {
+                // Start connection
+                btnText.innerHTML = '<span class="spinner"></span> Connecting...';
+                btn.disabled = true;
+                
+                // Try to fetch data
+                await fetchData();
+                
+                if (isConnected) {
+                    btnText.textContent = 'Disconnect Device';
+                    btn.disabled = false;
+                    
+                    // Start auto refresh every 2 seconds
+                    autoRefreshInterval = setInterval(fetchData, 2000);
+                } else {
+                    btnText.textContent = 'Retry Connection';
+                    btn.disabled = false;
+                    alert('Gagal terhubung ke device. Pastikan ESP8266 terhubung ke jaringan yang sama.');
+                }
+            } else {
+                // Stop connection
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                updateConnectionStatus(false);
+                btnText.textContent = 'Connect Device';
+            }
+        });
+
+        // Navigation
+        const navItems = document.querySelectorAll('.nav-item');
+        const pages = document.querySelectorAll('.page');
+        
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const targetPage = this.getAttribute('data-page');
+                
+                // Remove active from all nav items
+                navItems.forEach(nav => nav.classList.remove('active'));
+                
+                // Add active to clicked nav item
+                this.classList.add('active');
+                
+                // Hide all pages
+                pages.forEach(page => page.classList.remove('active'));
+                
+                // Show target page
+                document.getElementById(targetPage).classList.add('active');
+            });
+        });
+
+        // Initialize on load
+        window.addEventListener('load', function() {
+            initChart();
+            updateConnectionStatus(false);
+        });
+    </script>
+</body>
+</html>
